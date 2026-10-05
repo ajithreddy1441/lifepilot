@@ -1,15 +1,17 @@
 const env = require('../config/env');
+const { HttpError } = require('../utils/http');
 
 function publicMessage(err) {
   const code = err.code || err.errno;
+  if (err instanceof HttpError) return err.message;
   if (code === 'ER_ACCESS_DENIED_ERROR' || code === 1045 || /Access denied for user/i.test(err.message || '')) {
-    return 'Cannot reach the database. Check DB_HOST in backend/.env — Hostinger credentials only work on the server (localhost) or with Remote MySQL enabled from this PC.';
+    return 'Cannot reach the database. On Vercel, DB_HOST cannot be localhost — use the Hostinger MySQL hostname and enable Remote MySQL.';
   }
   if (code === 'ECONNREFUSED' || code === 'ENOTFOUND' || code === 'ETIMEDOUT' || code === 'PROTOCOL_CONNECTION_LOST') {
-    return 'The LifePilot server cannot connect to MySQL. Confirm the database is running and DB_HOST is correct.';
+    return 'The LifePilot server cannot connect to MySQL. Confirm DB_HOST, DB_PORT, DB_SSL, and that Remote MySQL allows Vercel.';
   }
   if (code === 'ER_BAD_DB_ERROR' || code === 1049) {
-    return 'Database not found. Run npm run migrate in the backend folder.';
+    return 'Database not found. Run npm run migrate against this database.';
   }
   if (err.status && err.status < 500) return err.message;
   if (env.isProd) return 'Something went wrong';

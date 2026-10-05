@@ -7,6 +7,9 @@ const activity = require('../services/activityService');
 const COOKIE = 'lp_token';
 
 function signToken(user) {
+  if (!env.jwtSecret) {
+    throw new HttpError(503, 'JWT_SECRET is not set on the API. Add it in Vercel → Environment Variables (Production) and Redeploy.');
+  }
   return jwt.sign({ sub: user.id }, env.jwtSecret, { expiresIn: env.jwtExpiresIn });
 }
 

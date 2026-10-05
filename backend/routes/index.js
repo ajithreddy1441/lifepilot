@@ -1,7 +1,8 @@
 const express = require('express');
 const multer = require('multer');
 const rateLimit = require('express-rate-limit');
-const { asyncHandler: h } = require('../utils/http');
+const env = require('../config/env');
+const { asyncHandler: h, HttpError } = require('../utils/http');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const S = require('../models/schemas');
@@ -24,6 +25,18 @@ const aiLimiter = rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: '
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const r = express.Router();
+
+r.use((req, res, next) => {
+  if (env.missing.length) {
+    return next(
+      new HttpError(
+        503,
+        `API is missing ${env.missing.join(', ')}. Add ${env.missing.join(', ')} in the Vercel backend project → Settings → Environment Variables (Production), then Redeploy.`,
+      ),
+    );
+  }
+  next();
+});
 
 // Auth
 r.post('/auth/register', authLimiter, validate(S.register), h(auth.register));

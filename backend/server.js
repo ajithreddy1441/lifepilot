@@ -6,6 +6,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const env = require('./config/env');
 const { pool } = require('./config/db');
+const { migrateOnce, schemaReady } = require('./db/migrateLib');
 const routes = require('./routes');
 const { errorHandler, notFoundHandler } = require('./middleware/error');
 
@@ -49,9 +50,22 @@ app.get('/', (_req, res) => {
 app.get('/api/health', async (_req, res) => {
   try {
     await pool.query('SELECT 1');
-    res.json({ ok: true, db: 'up', time: new Date().toISOString() });
+    const schema = await schemaReady();
+    if (!schema) {
+      await migrateOnce();
+    }
+    res.json({
+      ok: true,
+      db: 'up',
+      schema: (await schemaReady()) ? 'up' : 'missing',
+      time: new Date().toISOString(),
+    });
   } catch (err) {
-    res.status(503).json({ ok: false, db: 'down', error: env.isProd ? undefined : err.message });
+    res.status(503).json({
+      ok: false,
+      db: 'down',
+      error: env.isProd ? err.code || 'db_error' : err.message,
+    });
   }
 });
 

@@ -24,22 +24,27 @@ async function ensureUserDefaults(userId) {
   await query('INSERT IGNORE INTO notification_preferences (user_id) VALUES (?)', [userId]);
   const existing = await one('SELECT COUNT(*) AS n FROM categories WHERE user_id = ?', [userId]);
   if (!existing.n) {
-    await query(
-      'INSERT IGNORE INTO categories (user_id, slug, name, icon, color, is_default) VALUES ?',
-      [DEFAULT_CATEGORIES.map((c) => [userId, c.slug, c.name, c.icon, c.color, 1])],
-    );
+    for (const c of DEFAULT_CATEGORIES) {
+      await query(
+        'INSERT IGNORE INTO categories (user_id, slug, name, icon, color, is_default) VALUES (?, ?, ?, ?, ?, 1)',
+        [userId, c.slug, c.name, c.icon, c.color],
+      );
+    }
   }
   const blocks = await one('SELECT COUNT(*) AS n FROM schedule_blocks WHERE user_id = ?', [userId]);
   if (!blocks.n) {
     const prefs = await getPreferences(userId);
-    await query(
-      'INSERT INTO schedule_blocks (user_id, title, block_type, days, start_time, end_time, icon) VALUES ?',
-      [[
-        [userId, 'Main Job', 'work', prefs.work_days.join(','), prefs.work_start, prefs.work_end, '💼'],
-        [userId, 'Breakfast', 'meal', 'MON,TUE,WED,THU,FRI,SAT,SUN', '07:30', '08:00', '🍳'],
-        [userId, 'Dinner', 'meal', 'MON,TUE,WED,THU,FRI,SAT,SUN', '21:00', '21:30', '🍽️'],
-      ]],
-    );
+    const rows = [
+      [userId, 'Main Job', 'work', prefs.work_days.join(','), prefs.work_start, prefs.work_end, '💼'],
+      [userId, 'Breakfast', 'meal', 'MON,TUE,WED,THU,FRI,SAT,SUN', '07:30', '08:00', '🍳'],
+      [userId, 'Dinner', 'meal', 'MON,TUE,WED,THU,FRI,SAT,SUN', '21:00', '21:30', '🍽️'],
+    ];
+    for (const row of rows) {
+      await query(
+        'INSERT INTO schedule_blocks (user_id, title, block_type, days, start_time, end_time, icon) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        row,
+      );
+    }
   }
 }
 

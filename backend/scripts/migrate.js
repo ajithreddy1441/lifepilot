@@ -1,20 +1,8 @@
-const fs = require('fs');
-const path = require('path');
 const bcrypt = require('bcryptjs');
 const env = require('../config/env');
 const { pool } = require('../config/db');
 const { ensureUserDefaults } = require('../models/userModel');
-
-async function ensureColumn(table, column, ddl) {
-  const [rows] = await pool.query(
-    'SELECT COUNT(*) AS n FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?',
-    [env.db.name, table, column],
-  );
-  if (!Number(rows[0].n)) {
-    await pool.query(`ALTER TABLE \`${table}\` ADD COLUMN ${ddl}`);
-    console.log(`✓ ${table}.${column}`);
-  }
-}
+const { runMigrate } = require('../db/migrateLib');
 
 async function bootstrapAdmin() {
   if (!env.adminEmail || !env.adminPassword) {
@@ -46,24 +34,9 @@ async function main() {
     console.error(`Missing env vars: ${env.missing.join(', ')}. Copy .env.example to .env first.`);
     process.exit(1);
   }
-  const sql = fs.readFileSync(path.join(__dirname, '..', 'db', 'schema.sql'), 'utf8');
-  const statements = sql
-    .split(/;\s*$/m)
-    .map((s) => s.replace(/^\s*--.*$/gm, '').trim())
-    .filter(Boolean);
-
-  for (const stmt of statements) {
-    const name = (stmt.match(/CREATE TABLE IF NOT EXISTS (\w+)/) || [])[1] || stmt.slice(0, 40);
-    await pool.query(stmt);
-    console.log(`✓ ${name}`);
-  }
-
-  await ensureColumn('users', 'role', "role ENUM('user','admin') NOT NULL DEFAULT 'user'");
-  await ensureColumn('users', 'last_seen_at', 'last_seen_at DATETIME NULL');
-
+  const n = await runMigrate();
   await bootstrapAdmin();
-
-  console.log(`\nMigration complete (${statements.length} statements).`);
+  console.log(`\nMigration complete (${n} statements).`);
   await pool.end();
 }
 

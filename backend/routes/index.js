@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const rateLimit = require('express-rate-limit');
 const env = require('../config/env');
+const { migrateOnce } = require('../db/migrateLib');
 const { asyncHandler: h, HttpError } = require('../utils/http');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
@@ -37,6 +38,17 @@ r.use((req, res, next) => {
   }
   next();
 });
+
+r.use(
+  h(async (_req, _res, next) => {
+    try {
+      await migrateOnce();
+    } catch (err) {
+      throw new HttpError(503, `Could not prepare the database (${err.code || err.message}).`);
+    }
+    next();
+  }),
+);
 
 // Auth
 r.post('/auth/register', authLimiter, validate(S.register), h(auth.register));

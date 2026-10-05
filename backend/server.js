@@ -9,9 +9,11 @@ const { pool } = require('./config/db');
 const routes = require('./routes');
 const { errorHandler, notFoundHandler } = require('./middleware/error');
 
+const isServerless = Boolean(process.env.VERCEL);
+
 if (env.missing.length) {
-  console.error(`\n✗ Missing required env vars: ${env.missing.join(', ')}\n  Copy backend/.env.example to backend/.env and fill it in.\n`);
-  process.exit(1);
+  console.error(`\n✗ Missing required env vars: ${env.missing.join(', ')}\n  Copy backend/.env.example to backend/.env (or set them in Vercel) and fill them in.\n`);
+  if (!isServerless) process.exit(1);
 }
 
 const app = express();
@@ -36,6 +38,14 @@ app.use(
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
+app.get('/', (_req, res) => {
+  res.json({
+    ok: !env.missing.length,
+    service: 'lifepilot-api',
+    missing: env.missing.length ? env.missing : undefined,
+  });
+});
+
 app.get('/api/health', async (_req, res) => {
   try {
     await pool.query('SELECT 1');
@@ -57,9 +67,11 @@ if (fs.existsSync(dist)) {
 
 app.use(errorHandler);
 
-app.listen(env.port, () => {
-  console.log(`LifePilot AI API listening on :${env.port} (${env.nodeEnv})`);
-  if (env.runWorkerInProcess) require('./workers/schedulerWorker').start();
-});
+if (!isServerless) {
+  app.listen(env.port, () => {
+    console.log(`LifePilot AI API listening on :${env.port} (${env.nodeEnv})`);
+    if (env.runWorkerInProcess) require('./workers/schedulerWorker').start();
+  });
+}
 
 module.exports = app;

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="0.5" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#d946ef"/>
+    </linearGradient>
+    <linearGradient id="needle" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#e879f9"/>
+    </linearGradient>
+    <radialGradient id="bg" cx="0.5" cy="0.35" r="0.8">
+      <stop offset="0" stop-color="#1e2557"/>
+      <stop offset="1" stop-color="#0b1020"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="262" r="150" fill="none" stroke="url(#ring)" stroke-width="26"/>
+  <path d="M256 80 l14 40 h-28z" fill="url(#ring)"/>
+  <path d="M256 444 l14 -40 h-28z" fill="url(#ring)"/>
+  <path d="M74 262 l40 -14 v28z" fill="url(#ring)"/>
+  <path d="M438 262 l-40 -14 v28z" fill="url(#ring)"/>
+  <path d="M330 188 L280 286 L182 336 L232 238 Z" fill="url(#needle)"/>
+  <path d="M330 188 L232 238 L256 262 Z" fill="#ffffff" opacity="0.85"/>
+  <circle cx="256" cy="262" r="14" fill="#0b1020"/>
+  <path d="M398 92 l8 20 20 8 -20 8 -8 20 -8 -20 -20 -8 20 -8z" fill="#fde68a"/>
+</svg>

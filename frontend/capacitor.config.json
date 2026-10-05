@@ -1,0 +1,20 @@
+{
+  "appId": "com.lifepilot.ai",
+  "appName": "LifePilot AI",
+  "webDir": "dist",
+  "android": {
+    "path": "../mobile/android"
+  },
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_lifepilot",
+      "iconColor": "#6366F1"
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LifePilot AI</string>
+    <string name="title_activity_main">LifePilot AI</string>
+    <string name="package_name">com.lifepilot.ai</string>
+    <string name="custom_url_scheme">com.lifepilot.ai</string>
+</resources>

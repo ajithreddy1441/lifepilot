@@ -19,6 +19,7 @@ function SyncBadge({ alarm }) {
   const failed = phones.find((s) => s.status === 'failed');
   if (failed) return <span className="chip bg-rose-50 text-rose-600 dark:bg-rose-500/10" title={failed.error}><AlertCircle size={12} /> Sync failed on {failed.device_name}</span>;
   if (ok.length) return <span className="chip bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300"><CheckCircle2 size={12} /> On {ok.map((s) => s.device_name).join(', ')}</span>;
+  if (isAndroidApp) return <span className="chip bg-amber-50 text-amber-600 dark:bg-amber-500/10"><CircleDashed size={12} /> Updating this phone…</span>;
   return <span className="chip bg-amber-50 text-amber-600 dark:bg-amber-500/10"><CircleDashed size={12} /> Syncing…</span>;
 }
 
@@ -78,11 +79,15 @@ export default function Alarms() {
   }, [params]);
 
   const toggle = async (a, on) => {
-    setData((list) => list.map((x) => (x.id === a.id ? { ...x, enabled: on } : x)));
+    setData((list) => list.map((x) => (x.id === a.id ? { ...x, enabled: on, sync: on ? x.sync : [] } : x)));
     try {
-      await api.post(`/alarms/${a.id}/${on ? 'enable' : 'disable'}`);
-      emit('alarms');
-      if (isAndroidApp) syncAlarms('toggle');
+      const { alarm } = await api.post(`/alarms/${a.id}/${on ? 'enable' : 'disable'}`);
+      setData((list) => list.map((x) => (x.id === a.id ? alarm : x)));
+      if (isAndroidApp) {
+        await syncAlarms('toggle');
+      } else {
+        emit('alarms');
+      }
     } catch (err) {
       toast.error(err.message);
       emit('alarms');

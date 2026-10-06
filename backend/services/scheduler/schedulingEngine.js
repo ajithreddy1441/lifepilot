@@ -205,6 +205,8 @@ async function planDay(userId, date) {
   const ctx = ctxs[date];
   const dayStartUtc = ctx.dayStart.toUTC().toJSDate();
   const { unscheduled, habits } = await candidatesForPlanning(userId, dayStartUtc);
+  const cats = await query('SELECT id, slug FROM categories WHERE user_id = ?', [userId]);
+  const bySlug = Object.fromEntries(cats.map((c) => [c.slug, c.id]));
   const earliest = earliestFor(ctx);
   const virtual = [];
   const proposed = [];
@@ -218,6 +220,13 @@ async function planDay(userId, date) {
       .map((h) => ({ kind: 'habit', habit_id: h.id, title: h.title, icon: h.icon, category_id: h.category_id, category_slug: h.category_slug, duration: h.duration_minutes, anchor: h.reminder_time ? timeToMinutes(h.reminder_time) : null, priority: 'medium' })),
     ...unscheduled.map((t) => ({ kind: t.start_at ? 'reschedule' : 'task', task_id: t.id, title: t.title, icon: t.category_icon, category_id: t.category_id, category_slug: t.category_slug, duration: t.duration_minutes, priority: t.priority, due_at: t.due_at })),
   ];
+  if (!queue.length) {
+    queue.push(
+      { kind: 'seed', title: 'Workout', category_slug: 'fitness', category_id: bySlug.fitness, duration: 40, priority: 'high' },
+      { kind: 'seed', title: 'Freelance work', category_slug: 'freelancing', category_id: bySlug.freelancing, duration: 90, priority: 'medium' },
+      { kind: 'seed', title: 'Writing', category_slug: 'creative', category_id: bySlug.creative, duration: 45, priority: 'medium' },
+    );
+  }
 
   for (const item of queue) {
     const chunks = [];
@@ -285,6 +294,13 @@ async function planWeek(userId, { start, requests = [] }) {
   const { ctxs, prefs } = await loadDays(userId, dates);
 
   const { unscheduled } = await candidatesForPlanning(userId, first.toUTC().toJSDate());
+  const cats = await query('SELECT id, slug FROM categories WHERE user_id = ?', [userId]);
+  const bySlug = Object.fromEntries(cats.map((c) => [c.slug, c.id]));
+  const lifestyle = [
+    { title: 'Workout', category_slug: 'fitness', category_id: bySlug.fitness, sessions: 4, duration_minutes: 40 },
+    { title: 'Freelance work', category_slug: 'freelancing', category_id: bySlug.freelancing, sessions: 4, duration_minutes: 90 },
+    { title: 'Writing', category_slug: 'creative', category_id: bySlug.creative, sessions: 5, duration_minutes: 45 },
+  ];
   const reqs = [
     ...requests,
     ...unscheduled
@@ -292,6 +308,7 @@ async function planWeek(userId, { start, requests = [] }) {
       .slice(0, 10)
       .map((t) => ({ title: t.title, task_id: t.id, category_slug: t.category_slug, category_id: t.category_id, sessions: 1, duration_minutes: t.duration_minutes, due_at: t.due_at })),
   ];
+  if (!reqs.length) reqs.push(...lifestyle);
   const virtual = Object.fromEntries(dates.map((d) => [d, []]));
   const load = Object.fromEntries(dates.map((d) => [d, ctxs[d].busy.filter((b) => b.type === 'task').reduce((s, b) => s + (b.e - b.s), 0)]));
   const placements = Object.fromEntries(dates.map((d) => [d, []]));

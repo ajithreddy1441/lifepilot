@@ -205,6 +205,22 @@ function parse(text, { tz, prefs } = {}) {
     const when = parseWhen(raw, tz, prefs);
     return { intent: 'PLAN_DAY', date: when.date, time_of_day: timeOfDay(raw) };
   }
+  if (/\b(add|put|assign).+\b(today|tomorrow|this week|day planner|week planner)\b/i.test(raw) && !/\balarm\b/i.test(raw)) {
+    const when = parseWhen(raw, tz, prefs);
+    const { minutes, text: t1 } = extractDuration(raw);
+    const title = cleanTitle(t1.replace(/\b(add|put|assign|schedule|to|on|the|my|day|week|planner|today|tomorrow)\b/gi, ' '), when.matched);
+    if (title) {
+      return {
+        intent: 'CREATE_TASK',
+        task_title: normalizeTitle(title),
+        category: detectCategory(raw),
+        date: when.date || DateTime.now().setZone(tz || 'utc').toISODate(),
+        time: when.time,
+        time_of_day: timeOfDay(raw),
+        duration_minutes: minutes,
+      };
+    }
+  }
   if (/^(what|which|any|list|show|do i have|how many|are there)\b.*\balarms?\b|\balarms? do i have\b/i.test(raw)) {
     return { intent: 'QUERY_ALARMS', date: parseWhen(raw, tz, prefs).date };
   }

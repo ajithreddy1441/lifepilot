@@ -8,8 +8,8 @@ import { isAndroidApp } from './platform';
 
 const STATE_KEY = 'lp_alarm_state_v1';
 const DEVICE_KEY = 'lp_device_db_id';
-const ALARM_CHANNEL = 'lifepilot_alarms';
-const REMINDER_CHANNEL = 'lifepilot_reminders';
+const ALARM_CHANNEL = 'lifepilot_alarm_ring_v2';
+const REMINDER_CHANNEL = 'lifepilot_reminders_v2';
 const SNOOZE_SLOT = 99;
 const MAX_SCHEDULED = 400; // Android caps an app at 500 pending alarms
 
@@ -37,15 +37,22 @@ export async function getDeviceDbId() {
 export const setDeviceDbId = (id) => Preferences.set({ key: DEVICE_KEY, value: String(id) });
 
 export async function ensureChannels() {
+  try {
+    await LocalNotifications.deleteChannel({ id: 'lifepilot_alarms' });
+    await LocalNotifications.deleteChannel({ id: 'lifepilot_reminders' });
+  } catch {
+    /* old channels may not exist */
+  }
   await LocalNotifications.createChannel({
     id: ALARM_CHANNEL,
     name: 'Alarms',
-    description: 'Ringing alarms for tasks and routines',
+    description: 'Full alarm sound for tasks and routines',
     importance: 5,
     visibility: 1,
     vibration: true,
     lights: true,
     lightColor: '#6366F1',
+    sound: 'alarm_tone.wav',
   });
   await LocalNotifications.createChannel({
     id: REMINDER_CHANNEL,
@@ -54,6 +61,7 @@ export async function ensureChannels() {
     importance: 4,
     visibility: 1,
     vibration: true,
+    sound: 'alarm_tone.wav',
   });
   await LocalNotifications.registerActionTypes({
     types: [
@@ -124,6 +132,7 @@ function buildNotifications(alarm, perAlarm) {
       body: alarm.description || `It's time${end ? ` · ${timeLabel(at)} – ${timeLabel(end)}` : ''}`,
       schedule: { at, allowWhileIdle: true },
       channelId: silent ? REMINDER_CHANNEL : ALARM_CHANNEL,
+      sound: silent ? undefined : 'alarm_tone.wav',
       actionTypeId: 'ALARM',
       ongoing: !silent,
       autoCancel: true,
@@ -228,6 +237,7 @@ export async function scheduleTestAlarm(seconds = 5, title = 'Test alarm') {
       body: 'If you can see and hear this, phone alarms are working.',
       schedule: { at: new Date(Date.now() + seconds * 1000), allowWhileIdle: true },
       channelId: ALARM_CHANNEL,
+      sound: 'alarm_tone.wav',
       actionTypeId: 'ALARM',
       smallIcon: 'ic_stat_lifepilot',
       extra: { test: true },
@@ -244,6 +254,7 @@ async function snooze(extra) {
       body: `Snoozed for ${minutes} minutes`,
       schedule: { at: new Date(Date.now() + minutes * 60000), allowWhileIdle: true },
       channelId: ALARM_CHANNEL,
+      sound: 'alarm_tone.wav',
       actionTypeId: 'ALARM',
       smallIcon: 'ic_stat_lifepilot',
       extra,

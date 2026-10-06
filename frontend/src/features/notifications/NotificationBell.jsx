@@ -24,8 +24,8 @@ export function NotificationItem({ n, onOpen, onRead, onDelete, compact }) {
     <div className={`group flex items-start gap-3 rounded-xl px-3 py-2.5 transition hover:bg-slate-50 dark:hover:bg-white/5 ${n.read_at ? 'opacity-70' : ''}`}>
       <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${TYPE_DOT[n.notification_type] || 'bg-brand-400'}`} />
       <button className="min-w-0 flex-1 text-left" onClick={() => onOpen(n)}>
-        <p className={`text-sm ${n.read_at ? 'font-medium' : 'font-bold'}`}>{n.title}</p>
-        {n.message && <p className={`text-xs text-slate-500 dark:text-slate-400 ${compact ? 'truncate' : ''}`}>{n.message}</p>}
+        <p className={`break-words text-sm leading-snug ${n.read_at ? 'font-medium' : 'font-bold'}`}>{n.title}</p>
+        {n.message && <p className={`mt-0.5 break-words text-xs leading-snug text-slate-500 dark:text-slate-400 ${compact ? 'line-clamp-3' : ''}`}>{n.message}</p>}
         <p className="mt-0.5 text-[11px] text-slate-400">{fmtRelative(n.sent_at)}</p>
       </button>
       <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100">
@@ -59,7 +59,7 @@ export function useNotificationActions(reload) {
       reload();
     },
     readAll: async () => {
-      await api.post('/notifications/read-all');
+      await api.post('/notifications/read-all').catch(() => {});
       reload();
     },
   };
@@ -116,7 +116,14 @@ export default function NotificationBell() {
               <NotificationItem key={n.id} n={n} compact onOpen={(x) => { setOpen(false); actions.open(x); }} onRead={actions.read} onDelete={actions.remove} />
             ))}
           </div>
-          <Link to="/notifications" onClick={() => setOpen(false)} className="block border-t border-slate-100 py-2.5 text-center text-sm font-semibold text-brand-600 hover:bg-slate-50 dark:border-white/5 dark:text-brand-300 dark:hover:bg-white/5">
+          <Link
+            to="/notifications"
+            onClick={() => {
+              setOpen(false);
+              actions.readAll();
+            }}
+            className="block border-t border-slate-100 py-2.5 text-center text-sm font-semibold text-brand-600 hover:bg-slate-50 dark:border-white/5 dark:text-brand-300 dark:hover:bg-white/5"
+          >
             View all
           </Link>
         </div>

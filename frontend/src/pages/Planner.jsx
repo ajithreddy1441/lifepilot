@@ -5,8 +5,27 @@ import { api } from '../services/api';
 import { useApi } from '../hooks/useApi';
 import { useAssistantRun } from '../features/assistant/AssistantResult';
 import { PageHeader, PageLoader, Segmented } from '../components/ui';
+import Timeline from '../features/planner/Timeline';
 import TaskForm from '../features/tasks/TaskForm';
-import { dt, now, todayISO, fmtTime } from '../utils/format';
+import { dt, now, todayISO, fmtTime, fmtDay } from '../utils/format';
+
+function DayView({ date, onOpenTask, onAdd }) {
+  const { data, loading } = useApi(() => api.get(`/planner/day/${date}`), [date], { topics: ['tasks', 'alarms', 'planner'] });
+  if (loading && !data) return <PageLoader />;
+  return (
+    <div className="card p-4 md:p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="font-extrabold">{fmtDay(`${date}T12:00:00`)} timeline</h3>
+        <button onClick={() => onAdd(date)} className="btn-ghost px-2 py-1 text-xs"><Plus size={14} /> Task</button>
+      </div>
+      {data?.timeline?.length ? (
+        <Timeline items={data.timeline} alarms={data.alarms} onOpenTask={onOpenTask} />
+      ) : (
+        <p className="py-8 text-center text-sm text-slate-400">Nothing on this day yet. Tap Plan this day or Add a task.</p>
+      )}
+    </div>
+  );
+}
 
 function WeekView({ start, onOpenTask, onAdd }) {
   const navigate = useNavigate();
@@ -100,16 +119,22 @@ function MonthView({ month, onAdd }) {
 }
 
 export default function Planner() {
-  const [view, setView] = useState('week');
+  const [view, setView] = useState('day');
   const [anchor, setAnchor] = useState(now());
   const [form, setForm] = useState(null);
   const runAssistant = useAssistantRun();
 
+  const day = anchor.toISODate();
   const weekStart = anchor.startOf('week').toISODate();
   const month = anchor.toFormat('yyyy-MM');
-  const step = (n) => setAnchor((a) => a.plus(view === 'week' ? { weeks: n } : { months: n }));
-  const label = view === 'week' ? `${anchor.startOf('week').toFormat('d LLL')} – ${anchor.endOf('week').toFormat('d LLL yyyy')}` : anchor.toFormat('LLLL yyyy');
+  const step = (n) => setAnchor((a) => a.plus(view === 'day' ? { days: n } : view === 'week' ? { weeks: n } : { months: n }));
+  const label = view === 'day'
+    ? anchor.toFormat('cccc, d LLL yyyy')
+    : view === 'week'
+      ? `${anchor.startOf('week').toFormat('d LLL')} – ${anchor.endOf('week').toFormat('d LLL yyyy')}`
+      : anchor.toFormat('LLLL yyyy');
   const isThisWeek = weekStart === now().startOf('week').toISODate();
+  const isToday = day === todayISO();
 
   return (
     <div>
@@ -118,12 +143,17 @@ export default function Planner() {
         subtitle={label}
         actions={
           <>
-            <Segmented value={view} onChange={setView} options={[{ value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }]} />
+            <Segmented value={view} onChange={setView} options={[{ value: 'day', label: 'Day' }, { value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }]} />
             <div className="flex items-center rounded-xl bg-white shadow-sm dark:bg-ink-850">
               <button className="p-2.5" onClick={() => step(-1)} aria-label="Previous"><ChevronLeft size={18} /></button>
               <button className="px-2 text-sm font-semibold" onClick={() => setAnchor(now())}>Now</button>
               <button className="p-2.5" onClick={() => step(1)} aria-label="Next"><ChevronRight size={18} /></button>
             </div>
+            {view === 'day' && (
+              <button className="btn-primary" onClick={() => runAssistant(isToday ? 'Plan my day' : `Plan ${label}`, () => api.post('/assistant/plan-day', { date: day }))}>
+                <Sparkles size={16} /> Plan this day
+              </button>
+            )}
             {view === 'week' && (
               <button
                 className="btn-primary"
@@ -135,7 +165,9 @@ export default function Planner() {
           </>
         }
       />
-      {view === 'week' ? (
+      {view === 'day' ? (
+        <DayView date={day} onOpenTask={(t) => setForm({ task: t })} onAdd={(date) => setForm({ defaults: { date } })} />
+      ) : view === 'week' ? (
         <WeekView start={weekStart} onOpenTask={(t) => setForm({ task: t })} onAdd={(date) => setForm({ defaults: { date } })} />
       ) : (
         <MonthView month={month} onAdd={(date) => setForm({ defaults: { date } })} />

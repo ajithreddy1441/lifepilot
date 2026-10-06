@@ -1,6 +1,6 @@
 const { query, one } = require('../../config/db');
 const { HttpError, notFound } = require('../../utils/http');
-const { normTime, parseDays, formatDays, inZone, DateTime, humanTime, humanDate } = require('../../utils/time');
+const { normTime, parseDays, formatDays, inZone, DateTime, humanTime, humanDate, local } = require('../../utils/time');
 const { getPreferences, getUser } = require('../../models/userModel');
 const { publish } = require('../../utils/events');
 const notifications = require('../notifications/notificationService');
@@ -168,7 +168,19 @@ async function update(userId, id, patch) {
   return get(userId, id);
 }
 
-const setEnabled = (userId, id, enabled) => update(userId, id, { enabled });
+const setEnabled = async (userId, id, enabled) => {
+  const current = await one("SELECT * FROM alarms WHERE id = ? AND user_id = ? AND status <> 'deleted'", [id, userId]);
+  if (!current) throw notFound('Alarm');
+  const patch = { enabled };
+  if (enabled && (!current.repeat_type || current.repeat_type === 'once')) {
+    const tz = current.timezone;
+    const now = DateTime.now().setZone(tz);
+    const todayAt = local(now.toISODate(), current.alarm_time, tz);
+    if (todayAt <= now) patch.alarm_date = now.plus({ days: 1 }).toISODate();
+    else patch.alarm_date = now.toISODate();
+  }
+  return update(userId, id, patch);
+};
 
 async function remove(userId, id) {
   const current = await one("SELECT id FROM alarms WHERE id = ? AND user_id = ? AND status <> 'deleted'", [id, userId]);

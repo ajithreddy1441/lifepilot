@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, CheckCheck, Settings, Send, Clock } from 'lucide-react';
 import { api } from '../services/api';
@@ -15,6 +15,13 @@ export default function Notifications() {
   const { data, loading, reload } = useApi(() => api.get('/notifications', { filter, limit: 100 }), [filter], { topics: ['notifications'] });
   const { data: upcoming } = useApi(() => api.get('/notifications/upcoming').then((r) => r.notifications), [], { topics: ['notifications', 'tasks', 'alarms'], initial: [] });
   const actions = useNotificationActions(reload);
+
+  useEffect(() => {
+    if (!data?.unread) return undefined;
+    const t = setTimeout(() => actions.readAll(), 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.unread]);
 
   const test = async () => {
     try {
